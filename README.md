@@ -21,7 +21,7 @@ This proof of concept demonstrates a browser-specific state management solution 
 ### State Management
 - **Session Identification**: Each browser instance receives a unique session ID
 - **Storage Method**: Uses browser's Local Storage
-  - Key: `settings`
+  - Key: `person`
   - Value: Session-specific state data
 - **State Persistence**: Maintains throughout the entire browser session
 
@@ -68,15 +68,6 @@ This proof of concept demonstrates a browser-specific state management solution 
 - Backend updates from other users don't override current session state
 
 ## Example Usage
-```javascript
-// Session state is automatically maintained through Local Storage
-// Example of state structure:
-{
-  sessionId: "unique-browser-identifier",
-  viewPreferences: {
-    layout: "grid",
-    imageSize: "large",
-    sortOrder: "newest"
-  }
-}
+```
+Open 2 seperate tabs with same url  
 ```
