@@ -5,20 +5,68 @@ const { randomBytes } = require('crypto');
 fastify.register(require('@fastify/formbody'));
 
 const backendData = {};
-
+let sessionid = 0;
+ //<button data-on-click="$$put('/sessionid')">Send Session</button> </br>
 function indexPage() {
+  // this only gets set the first time user hits the page
+  sessionid++
   const indexPage = `
     <!doctype html><html>
+   
       <head>
-        <title>Node/Fastify + Datastar Example</title>
+        <title>Node/Fastify + Datastar Example With Anonymous User Local Storage</title>
         <script type="module" defer src="https://cdn.jsdelivr.net/npm/@sudodevnull/datastar"></script></head>
       <body>
         <h2>Node/Fastify + Datastar Example</h2>
         <main class="container" id="main" data-store='{ input: "", show: false }'>
+        <div id="result"></div>
+        <p id="name">Hello</p>
+        </br>
+        <script>
+        var foo = new Set();
+        foo.add(1);
+        foo.add(2);
+        foo.add(${sessionid})
+        
+        localStorage.setItem("set",JSON.stringify([...foo]));
+        var x = localStorage.getItem('set');
+       // console.log('x: ', JSON.parse(x));
+        function setPerson(){
+          // var person2 = { 'name': document.getElementById('name').innerHTML}
+          var person = {
+            // name: document.getElementById('name').value, FAILS
+            name: ${sessionid}
+           };
+      
+          // Put the object into storage 
+          localStorage.setItem('person', JSON.stringify(person));
+          }
+          setPerson()
+          
+          // Retrieve
+          let obj = localStorage.getItem("person")
+          obj = JSON.parse(obj);
+          console.log(obj)
+          let na = obj.name
+          console.log(na)
+          document.getElementById("result").innerHTML = na
+          // .name nor .value
+          //localStorage.getItem("person").name;
+       function getPerson(){
+        let name = JSON.parse(localStorage.getItem("person")).name
+        console.log('getname ',name)
+        ;
+       }
+       getPerson()
+        </script>
+     
+        <input type="submit" value="click" onclick="getPerson" data-on-click="$$put('/put')" />
+       
         <input type="text" placeholder="Type here!" data-model="input" />
-        <button data-on-click="$$put('/put')">Send State</button>
+       
+        <button data-on-click="$$put('/put/${sessionid}')">Send State ${sessionid} </button>
         <div id="output"></div>
-        <button data-on-click="$$get('/get')">Get Backend State</button>
+        <button data-on-click="$$get('/get/${sessionid}')">Get Backend State ${sessionid} </button>
         <div id="output2"></div>
         <button data-on-click="$show=!$show">Toggle</button>
         <div data-show="$show">
@@ -51,12 +99,23 @@ function sendSSE({ reply, frag, selector, merge, mergeType, end }) {
 fastify.get('/', async (request, reply) => {
   return reply.type('text/html').send(indexPage());
 });
+// fastify.put('/sessionid', async (request, reply) => {
+//   sessionid++;
+//   setSSEHeaders(reply);
+//   const output = ` sessionid${sessionid} `;
+//   const frag = `<div id="output">${output}</div>`;
+//   sendSSE({    reply,    frag,    selector: null,    merge: true,
+//     mergeType: 'morph',    end: true  });
+//     // We need to return undefined to prevent Fastify from automatically ending the response
+//   return undefined;
+// });
 
+// send
 fastify.put('/put', async (request, reply) => {
   setSSEHeaders(reply);
   const { input } = request.body;
   backendData.input = input;
-  const output = `Your input: ${input}, is ${input.length} long.`;
+  const output = `Your input: ${input}, is ${input.length} long. sessionid = ${sessionid} `;
   const frag = `<div id="output">${output}</div>`;
   
   sendSSE({
@@ -71,12 +130,38 @@ fastify.put('/put', async (request, reply) => {
   // We need to return undefined to prevent Fastify from automatically ending the response
   return undefined;
 });
-
-fastify.get('/get', async (request, reply) => {
+fastify.put('/put/:session_id', async (request, reply) => {
+  const {
+    session_id
+  } = request.params;
   setSSEHeaders(reply);
-
+  const { input } = request.body;
+  backendData.input = input;
+  // const output = `Your input: ${input}, is ${input.length} long. sessionid = ${sessionid} `;
+  const output = `Your input: ${input}, is ${input.length} long. sessionid = ${session_id} `;
+ const frag = `<div id="output">${output}</div>`;
+  
+  sendSSE({
+    reply,
+    frag,
+    selector: null,
+    merge: true,
+    mergeType: 'morph',
+    end: true
+  });
+  
+  // We need to return undefined to prevent Fastify from automatically ending the response
+  return undefined;
+});
+// fastify.get('/get', async (request, reply) => {
+  fastify.get('/get/:session_id', async (request, reply) => {
+    const {
+      session_id
+    } = request.params;
+    setSSEHeaders(reply);
+  
   const output = `Backend State: ${JSON.stringify(backendData)}.`;
-  let frag = `<div id="output2">${output}</div>`;
+  let frag = `<div id="output2">${output} sessionid = ${session_id}</div>`;
 
   sendSSE({
     reply,
@@ -85,16 +170,6 @@ fastify.get('/get', async (request, reply) => {
     merge: true,
     mergeType: 'morph',
     end: false
-  });
-
-  frag = `<div id="output3">Check this out!</div>`;
-  sendSSE({
-    reply,
-    frag,
-    selector: '#main',
-    merge: true,
-    mergeType: 'prepend',
-    end: true
   });
 
   return undefined;
@@ -118,7 +193,7 @@ fastify.get('/feed', async (request, reply) => {
         end: false
       });
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 5000));//1000
     }
     reply.raw.end();
   };
